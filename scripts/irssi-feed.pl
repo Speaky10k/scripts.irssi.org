@@ -14,7 +14,7 @@ use strict;
 use warnings;
 use feature 'state';
 use XML::Feed;
-use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
+use Time::HiRes qw(clock_gettime);
 use List::Util qw(min);
 use IO::Socket::INET;
 use Errno;
@@ -147,9 +147,9 @@ sub check_feeds {
 	our @feeds;
 	my $nextcheck = ((min(map { feed_check($_) } @feeds)) // 0) + 1;
 	if($thistimeout == $timeoutcntr) {
-		my $fivemin = clock_gettime(CLOCK_MONOTONIC) + 301;
+		my $fivemin = clock_gettime() + 301;
 		$nextcheck = $fivemin if $nextcheck > $fivemin;
-		my $timeout = $nextcheck - clock_gettime(CLOCK_MONOTONIC);
+		my $timeout = $nextcheck - clock_gettime();
 		$timeout = 5 if $timeout < 5;
 		$timeoutcntr += 1;
 		my $hackcopy = $timeoutcntr; # to avoid passing a reference. I don't understand why it happens
@@ -187,7 +187,7 @@ sub feed_new {
 		uri => URI->new($uri),
 		name => $uri,
 		color => $color,
-		lastcheck => clock_gettime(CLOCK_MONOTONIC) - 86400,
+		lastcheck => clock_gettime() - 86400,
 		timeout => valid_timeout($timeout), # next actual timeout. Doubled on error
 		configtimeout => $timeout,
 		active => 1, # use to deactivate when an error has been encountered.
@@ -221,7 +221,7 @@ sub feed_new {
 sub feed_check {
 	my $feed = shift;
 	return if(not $feed->{active});
-	my $now = clock_gettime(CLOCK_MONOTONIC);
+	my $now = clock_gettime();
 	if(($now - $feed->{lastcheck}) > $feed->{timeout}) {
 		if($feed->{io}->{failed} >= 3) {
 			$feed->{timeout} = valid_timeout($feed->{timeout} * 2);
@@ -319,7 +319,7 @@ sub feed_parse_buffer {
 			feedprint('Feed ' . feed_stringrepr($feed) . ' got redirected to ' . $location);
 			$feed->{uri} = $uri;
 			# fake soonish needed recheck:
-			$feed->{lastcheck} = clock_gettime(CLOCK_MONOTONIC) - $feed->{timeout} + 1;
+			$feed->{lastcheck} = clock_gettime() - $feed->{timeout} + 1;
 			check_feeds();
 		} else {
 			feedprint('Feed ' . feed_stringrepr($feed) . ' got redirected, but the destination was not determinable');
